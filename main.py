@@ -1,4 +1,5 @@
 import os
+<<<<<<< HEAD
 import json
 from flask import Flask, request, redirect, render_template
 from google.cloud import storage
@@ -6,11 +7,19 @@ import google.generativeai as genai
 
 # Initialize Flask app
 app = Flask(__name__, template_folder='templates')
+=======
+from flask import Flask, request, redirect, send_file
+from google.cloud import storage
+
+# Initialize Flask app
+app = Flask(__name__)
+>>>>>>> f656d72 (Initial commit)
 
 # Initialize Google Cloud Storage client
 storage_client = storage.Client()
 bucket_name = "pr1images-bucket"
 
+<<<<<<< HEAD
 # Configure Gemini API key
 genai.configure(api_key=os.environ['GEMINI_API'])
 
@@ -53,12 +62,32 @@ def index():
                 index_html += f'<li><a href="/files/{file}" target="_blank">{file}</a></li>'
     except Exception as e:
         index_html += f"<li>Error fetching files: {str(e)}</li>"
+=======
+@app.route('/')
+def index():
+    index_html = """
+    <form method="post" enctype="multipart/form-data" action="/upload">
+      <div>
+        <label for="file">Choose file to upload</label>
+        <input type="file" id="file" name="form_file" accept="image/jpeg"/>
+      </div>
+      <div>
+        <button>Submit</button>
+      </div>
+    </form>
+    <ul>
+    """
+
+    for file in get_list_of_files():
+        index_html += f'<li><a href="/files/{file}">{file}</a></li>'
+>>>>>>> f656d72 (Initial commit)
     
     index_html += "</ul>"
     return index_html
 
 @app.route('/upload', methods=["POST"])
 def upload():
+<<<<<<< HEAD
     """Handle image upload, generate caption/description, and save JSON."""
     file = request.files.get('form_file')
     if not file:
@@ -87,6 +116,22 @@ def view_file(filename):
         return f"Error fetching AI response: {str(e)}", 500
     
     return render_template('view_image.html', filename=filename, ai_response=ai_response, bucket_name=bucket_name)
+=======
+    file = request.files['form_file']
+    if file:
+        upload_file(file)
+        return redirect("/")
+    return "No file uploaded.", 400
+
+@app.route('/files')
+def list_files():
+    return {"files": get_list_of_files()}
+
+@app.route('/files/<filename>')
+def download(filename):
+    local_file_path = download_file(filename)
+    return send_file(local_file_path, as_attachment=True)
+>>>>>>> f656d72 (Initial commit)
 
 def get_list_of_files():
     """Lists all files in the Google Cloud Storage bucket."""
@@ -94,6 +139,7 @@ def get_list_of_files():
     return [blob.name for blob in blobs]
 
 def upload_file(file):
+<<<<<<< HEAD
     """Uploads a file to Google Cloud Storage and saves it locally in the container."""
     local_file_path = os.path.join("/app/files", file.filename)
     os.makedirs("/app/files", exist_ok=True)
@@ -156,3 +202,20 @@ def get_ai_response(json_filename):
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8083)
+=======
+    """Uploads a file to the Google Cloud Storage bucket."""
+    blob = storage_client.bucket(bucket_name).blob(file.filename)
+    blob.upload_from_file(file)
+    return
+
+def download_file(filename):
+    """Downloads a file from the Google Cloud Storage bucket."""
+    local_path = os.path.join("./files", filename)
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    blob = storage_client.bucket(bucket_name).blob(filename)
+    blob.download_to_filename(local_path)
+    return local_path
+
+if __name__ == "__main__":
+    app.run(debug=True, host="localhost", port=8080)
+>>>>>>> f656d72 (Initial commit)
