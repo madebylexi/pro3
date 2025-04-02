@@ -1,25 +1,35 @@
 steps:
-# Step 1: Build Docker image
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/$PROJECT_ID/image-app:$COMMIT_SHA', '.']
+# Step 1: Run tests with env vars
+- name: 'python:3.10-slim'
+  entrypoint: 'bash'
+  env:
+    - GEMINI_API=${_GEMINI_API}
+    - BUCKET_NAME=${_BUCKET_NAME}
+    - BACKGROUND_COLOR=${_COLOR}
+  args:
+    - '-c'
+    - 'pip install -r requirements.txt && pytest test_app.py'
 
-# Step 2: Push image to Container Registry
+# Step 2: Build Docker image
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'gcr.io/$PROJECT_ID/image-app:$COMMIT_SHA']
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/image-app:latest', '.']
 
-# Step 3: Deploy to Cloud Run with version tag and env vars
+# Step 3: Push image to Container Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/image-app:latest']
+
+# Step 4: Deploy to Cloud Run with env vars
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'gcloud'
   args:
     [
       'run', 'deploy', 'flask-app',
-      '--image', 'gcr.io/$PROJECT_ID/image-app:$COMMIT_SHA',
+      '--image', 'gcr.io/$PROJECT_ID/image-app:latest',
       '--region', 'us-central1',
       '--platform', 'managed',
       '--allow-unauthenticated',
-      '--tag', '${_COLOR}',
       '--set-env-vars', 'BACKGROUND_COLOR=${_COLOR},GEMINI_API=${_GEMINI_API},BUCKET_NAME=${_BUCKET_NAME}'
     ]
 
 images:
-- 'gcr.io/$PROJECT_ID/image-app:$COMMIT_SHA'
+- 'gcr.io/$PROJECT_ID/image-app:latest'
